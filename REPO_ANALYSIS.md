@@ -7,10 +7,11 @@
 ## Mục Lục
 
 1. [Tổng Quan](#1-tổng-quan)
-2. [Danh Sách Modules Theo Danh Mục](#2-danh-sách-modules-theo-danh-mục)
-3. [Cấu Trúc Một Module](#3-cấu-trúc-một-module)
-4. [Models Chính Theo Module](#4-models-chính-theo-module)
-5. [Sơ Đồ Phụ Thuộc](#5-sơ-đồ-phụ-thuộc)
+2. [Phân Loại CE vs Enterprise](#2-phân-loại-ce-vs-enterprise)
+3. [Danh Sách Modules Theo Danh Mục](#3-danh-sách-modules-theo-danh-mục)
+4. [Cấu Trúc Một Module](#4-cấu-trúc-một-module)
+5. [Models Chính Theo Module](#5-models-chính-theo-module)
+6. [Sơ Đồ Phụ Thuộc](#6-sơ-đồ-phụ-thuộc)
 
 ---
 
@@ -29,7 +30,90 @@ Odoo Core là một hệ thống ERP (Enterprise Resource Planning) hoàn chỉn
 
 ---
 
-## 2. Danh Sách Modules Theo Danh Mục
+## 2. Phân Loại CE vs Enterprise
+
+### Bối Cảnh
+
+Repository `odoo-core` **là bản Community Edition (CE)**. Phần lớn Enterprise modules nằm trong một repository riêng (`enterprise`). Tuy nhiên, trong repo này vẫn tồn tại một số module được đánh dấu license `OEEL-1` (Enterprise).
+
+Cách phân biệt: Kiểm tra field `'license'` trong file `__manifest__.py` của mỗi module.
+
+| License | Phiên Bản | Ý Nghĩa |
+|---------|-----------|---------|
+| `LGPL-3` | Community Edition (CE) | Mã nguồn mở, miễn phí |
+| `OEEL-1` | Enterprise Edition (EE) | Bản thương mại, cần license trả phí |
+| *(không có)* | Không xác định | Thường là CE hoặc module mới |
+
+### Thống Kê
+
+| Loại | Số Module |
+|------|-----------|
+| **Community (LGPL-3)** | **583** |
+| **Enterprise (OEEL-1)** | **4** |
+| Không có license field | 29 |
+| **Tổng** | **618** |
+
+> **Lưu ý:** 29 module không có `license` field gồm chủ yếu là các module localization mới và một số module đặc thù (`pos_self_order`, `spreadsheet_dashboard`, `google_gmail`...). Đây thực chất vẫn là CE modules.
+
+---
+
+### Modules Enterprise (OEEL-1) — Có trong repo này
+
+Chỉ có **4 modules** được cấp phép Enterprise trong repo `odoo-core`:
+
+| Module | Tên Hiển Thị | Danh Mục |
+|--------|-------------|----------|
+| `certificate` | Certificate | Hidden/Tools |
+| `l10n_hr_edi` | Croatia - e-invoicing | Accounting/Localizations/Reporting |
+| `l10n_it_edi_website_sale` | Italy eCommerce eInvoicing | Accounting/Localizations/Website |
+| `project_hr_skills` | Project - Skills | Services/Project |
+
+**Mô tả chi tiết:**
+
+- **`certificate`** — Module nội bộ quản lý chứng chỉ số (certificates). Dùng làm nền tảng cho các tính năng xác thực điện tử trong EE.
+- **`l10n_hr_edi`** — E-invoicing điện tử theo chuẩn Croatia (bắt buộc từ 2026 theo luật Croatia).
+- **`l10n_it_edi_website_sale`** — Tích hợp e-invoicing Italy cho kênh bán hàng eCommerce.
+- **`project_hr_skills`** — Liên kết kỹ năng nhân sự (`hr.skills`) với dự án để phân công nhân sự theo năng lực.
+
+---
+
+### Modules Không Có License Field (29 modules)
+
+Các module này chưa khai báo `license` trong manifest, nhưng mặc định thuộc CE:
+
+| Nhóm | Modules |
+|------|---------|
+| **Localization** | `l10n_dk_fik`, `l10n_ie`, `l10n_in_edi`, `l10n_in_edi_ewaybill`, `l10n_in_ewaybill_stock`, `l10n_in_gstin_status`, `l10n_iq`, `l10n_jo_edi_pos`, `l10n_lb_account`, `l10n_mt_pos`, `l10n_mu_account`, `l10n_my_edi_pos`, `l10n_pe_pos`, `l10n_pe_website_sale`, `l10n_tw_edi_ecpay`, `l10n_tw_edi_ecpay_website_sale`, `l10n_ug`, `l10n_uy_pos`, `l10n_vn_edi_viettel`, `l10n_zm_account` |
+| **Point of Sale** | `pos_self_order`, `pos_self_order_adyen`, `pos_self_order_razorpay`, `pos_self_order_sale`, `pos_self_order_stripe` |
+| **Productivity** | `spreadsheet_dashboard` |
+| **Integrations** | `cloud_storage_migration`, `google_gmail`, `microsoft_outlook` |
+
+---
+
+### Tất Cả Modules CE (LGPL-3) — 583 modules
+
+Toàn bộ các modules còn lại đều là **Community Edition** — bao gồm toàn bộ core business modules:
+
+| Danh Mục | Ví Dụ Modules |
+|----------|--------------|
+| Accounting | `account`, `account_payment`, `account_edi`, `analytic` |
+| Sales | `sale`, `sale_crm`, `sale_stock`, `sale_mrp` |
+| CRM | `crm`, `crm_sms`, `crm_livechat` |
+| Inventory | `stock`, `stock_account`, `stock_picking_batch` |
+| Purchase | `purchase`, `purchase_stock`, `purchase_requisition` |
+| Manufacturing | `mrp`, `mrp_account`, `mrp_repair`, `mrp_subcontracting` |
+| Human Resources | `hr`, `hr_attendance`, `hr_contract`, `hr_holidays`, `hr_payroll` |
+| Project | `project`, `project_account`, `project_todo` |
+| Website | `website`, `website_sale`, `website_blog`, `website_slides` |
+| Marketing | `mass_mailing`, `event`, `event_sale`, `loyalty` |
+| Point of Sale | `point_of_sale`, `pos_restaurant`, `pos_loyalty` |
+| Productivity | `calendar`, `discuss`, `mail`, `digest` |
+| Localizations | `l10n_vn`, `l10n_us`, `l10n_fr`, `l10n_de`, ... *(112+ quốc gia)* |
+| Core/Framework | `base`, `web`, `portal`, `iap`, `sms` |
+
+---
+
+## 3. Danh Sách Modules Theo Danh Mục
 
 ### Kế Toán (Accounting)
 
@@ -175,7 +259,7 @@ Có **112 modules** địa phương hóa kế toán cho từng quốc gia, đặ
 
 ---
 
-## 3. Cấu Trúc Một Module
+## 4. Cấu Trúc Một Module
 
 Lấy module `account` làm ví dụ đại diện — đây là module lớn và đầy đủ nhất.
 
@@ -308,7 +392,7 @@ account/
 
 ---
 
-## 4. Models Chính Theo Module
+## 5. Models Chính Theo Module
 
 ### Module `account` — Kế Toán
 
@@ -417,7 +501,7 @@ account/
 
 ---
 
-## 5. Sơ Đồ Phụ Thuộc
+## 6. Sơ Đồ Phụ Thuộc
 
 Dưới đây là các module nền tảng quan trọng và số lượng module phụ thuộc vào chúng:
 
