@@ -17,6 +17,7 @@
 7. [Wizards](#7-wizards)
 8. [Modules Mở Rộng](#8-modules-mở-rộng)
 9. [Luồng Hoạt Động Chính](#9-luồng-hoạt-động-chính)
+10. [CE vs Enterprise — So Sánh Chi Tiết](#10-ce-vs-enterprise--so-sánh-chi-tiết)
 
 ---
 
@@ -420,4 +421,220 @@ Các module khác trong repo `odoo-core` phụ thuộc vào `project`:
 
 ---
 
-*Tài liệu được tổng hợp từ mã nguồn `addons/project/` trong repository `odoo-core`.*
+## 10. CE vs Enterprise — So Sánh Chi Tiết
+
+### Bối Cảnh
+
+Repository `odoo-core` chứa bản **Community Edition**. Bản **Enterprise** được phân phối trong một repository riêng (`enterprise`) với license `OEEL-1`. Các tính năng EE được thêm vào thông qua các module riêng kế thừa (inherit) và mở rộng CE.
+
+Có **1 module OEEL-1 liên quan đến project** nằm ngay trong repo này: `project_hr_skills`.
+Phần còn lại của EE không có trong repo này.
+
+---
+
+### Tổng Quan Nhanh
+
+| Tính Năng | CE | EE |
+|-----------|----|----|
+| Kanban / List / Calendar / Form | Có | Có |
+| Graph / Pivot / Burndown Chart | Có | Có |
+| **Gantt View (Timeline)** | **Không** | **Có** |
+| **Map View** | **Không** | **Có** |
+| Task stages, Sub-tasks, Dependencies | Có | Có |
+| Milestones, Recurring tasks | Có | Có |
+| Project Updates, Customer Ratings | Có | Có |
+| Project Sharing (Portal Collaborators) | Có | Có |
+| Timesheets (`hr_timesheet`) | Có | Có |
+| Billing by Sale Order (`sale_project`) | Có | Có |
+| Timesheet Pricing Types (`sale_timesheet`) | Có | Có |
+| **Resource Planning / Forecast** | **Không** | **Có** |
+| **Timesheet Approval Grid** | **Không** | **Có** |
+| **Skills-based Task Assignment** | **Không** | **Có** |
+| **Documents Integration** | **Không** | **Có** |
+
+---
+
+### CE — Tính Năng Đầy Đủ
+
+#### Views
+
+| View | CE | Ghi Chú |
+|------|----|---------|
+| Kanban (task & project) | Có | Với kéo thả stage |
+| List | Có | |
+| Form | Có | |
+| Calendar | Có | Theo deadline |
+| Graph | Có | Lazy loaded |
+| Pivot | Có | Lazy loaded |
+| Burndown Chart | Có | Lazy loaded — biểu đồ tiêu hao task theo thời gian |
+| **Gantt / Timeline** | **Không** | Chỉ có trong EE (`project_enterprise`) |
+| **Map** | **Không** | Chỉ có trong EE (`project_enterprise`) |
+
+#### Tính Năng Bật/Tắt (Feature Flags trong CE)
+
+Các tính năng dưới đây **có sẵn trong CE** nhưng mặc định tắt, bật qua `Settings → Project`:
+
+| Tính Năng | Group | Mặc Định |
+|-----------|-------|----------|
+| Project Stages | `group_project_stages` | Tắt |
+| Customer Ratings | `group_project_rating` | Tắt |
+| Recurring Tasks | `group_project_recurring_tasks` | Tắt |
+| Task Dependencies | `group_project_task_dependencies` | Tắt |
+| Milestones | `group_project_milestone` | Tắt |
+
+#### Billing & Timesheets trong CE
+
+CE có **toàn bộ** vòng đời billing cơ bản nhờ chuỗi module sau (tất cả LGPL-3):
+
+```
+project (CE)
+  └── sale_project (CE)      → gắn task vào Sale Order, allow_billable
+        └── sale_timesheet (CE)  → 3 kiểu tính giá:
+              ├── task_rate      (giá theo task)
+              ├── fixed_rate     (giá cố định theo project)
+              └── employee_rate  (giá theo từng nhân viên)
+```
+
+Điểm CE còn thiếu trong billing so với EE: không có **Timesheet Approval** (nhân viên gửi, manager duyệt timesheet) — tính năng đó cần `timesheet_grid` (EE).
+
+---
+
+### Enterprise — Tính Năng Bổ Sung
+
+#### 1. Gantt View (Timeline) — `project_enterprise`
+
+EE thêm **Gantt chart** cho cả task lẫn dự án. Người dùng có thể:
+- Kéo thả task trên trục thời gian
+- Xem dependency giữa task dưới dạng mũi tên nối
+- Thu phóng (ngày / tuần / tháng / quý)
+- Xem workload của từng nhân viên trực tiếp trên timeline
+
+> **Bằng chứng trong code CE:** File `project_task_views.xml` dòng 461 có comment: `"Field needed to trigger its compute in project_enterprise"` — CE chủ động giữ field `allocated_hours` ẩn để EE có thể dùng.
+
+#### 2. Map View — `project_enterprise`
+
+Hiển thị task trên **bản đồ địa lý** (Google Maps / OpenStreetMap) dựa theo địa chỉ của `partner_id`. Hữu ích cho các dự án dịch vụ tại địa điểm (field service, delivery, maintenance).
+
+#### 3. Resource Planning & Forecast — `project_forecast`
+
+Module EE `project_forecast` bổ sung:
+- Xem **năng lực nhóm** (capacity planning): ai đang rảnh, ai đang bận
+- **Phân bổ nguồn lực** (resource allocation) theo từng dự án / sprint
+- Tích hợp với `resource.calendar` để tính giờ làm việc thực tế
+- Dự báo thời gian hoàn thành dựa trên tiến độ hiện tại
+
+CE chỉ có `allocated_hours` trên task (gõ tay) mà không có giao diện lên kế hoạch nhân sự tổng thể.
+
+#### 4. Timesheet Approval Grid — `timesheet_grid`
+
+Module EE thêm:
+- Giao diện nhập timesheet dạng **bảng lưới** (grid) theo tuần — nhanh hơn nhiều so với form từng dòng
+- Luồng **phê duyệt timesheet**: nhân viên submit → manager duyệt/từ chối
+- Khóa timesheet đã duyệt, không cho sửa
+- Tổng hợp giờ theo tuần với trạng thái duyệt
+
+> CE chỉ có nhập timesheet từng dòng qua form/list — không có approval workflow.
+
+#### 5. Skills-based Task Assignment — `project_hr_skills`
+
+Module OEEL-1 duy nhất **có trong repo này** (`addons/project_hr_skills/`). Bổ sung:
+- Gắn **kỹ năng yêu cầu** (`hr.skill`) vào task
+- Gợi ý nhân viên phù hợp khi phân công dựa trên kỹ năng
+- Hiển thị profile kỹ năng của nhân viên trong context dự án
+
+CE không có khái niệm kỹ năng trong project — `user_ids` chỉ là danh sách người dùng thuần túy.
+
+#### 6. Documents Integration — `documents_project`
+
+Module EE `documents_project` kết nối với app **Documents** (EE):
+- Mỗi dự án / task có thể có **workspace tài liệu** riêng
+- Tải lên, ký (e-sign), chia sẻ tài liệu ngay trong task
+- Version control tài liệu
+- Phân quyền tài liệu theo project
+
+CE chỉ có **attachments** thông thường trên task (không có document management).
+
+---
+
+### Bảng So Sánh Theo Nhóm Chức Năng
+
+#### Quản Lý Công Việc
+
+| Chức Năng | CE | EE |
+|-----------|----|----|
+| Tạo task, sub-task | Có | Có |
+| Stage & Kanban | Có | Có |
+| Task dependencies (Blocked By) | Có (bật tùy chọn) | Có |
+| Recurring tasks | Có (bật tùy chọn) | Có |
+| Custom task properties | Có | Có |
+| Personal stage per user | Có | Có |
+| Gantt / Timeline view | Không | Có |
+| Map view | Không | Có |
+| Skills yêu cầu trên task | Không | Có (`project_hr_skills`) |
+
+#### Theo Dõi Thời Gian
+
+| Chức Năng | CE | EE |
+|-----------|----|----|
+| Nhập timesheet (form/list) | Có | Có |
+| Timesheet theo dự án / task | Có | Có |
+| Phê duyệt timesheet (approval) | Không | Có (`timesheet_grid`) |
+| Grid nhập timesheet theo tuần | Không | Có (`timesheet_grid`) |
+| Khóa timesheet đã duyệt | Không | Có |
+
+#### Lập Kế Hoạch & Nguồn Lực
+
+| Chức Năng | CE | EE |
+|-----------|----|----|
+| Phân công nhân viên vào task | Có | Có |
+| `allocated_hours` trên task | Có | Có |
+| Xem tổng giờ allocated vs thực tế | Một phần (stat button) | Có |
+| Capacity planning (ai rảnh/bận) | Không | Có (`project_forecast`) |
+| Resource allocation theo timeline | Không | Có |
+| Dự báo deadline dựa trên capacity | Không | Có |
+
+#### Tài Chính & Billing
+
+| Chức Năng | CE | EE |
+|-----------|----|----|
+| Gắn project vào Sale Order | Có (`sale_project`) | Có |
+| Billing theo task | Có | Có |
+| Billing theo timesheet (3 kiểu giá) | Có (`sale_timesheet`) | Có |
+| Billing theo milestone | Có (`sale_project`) | Có |
+| Project Profitability (revenues/costs panel) | Có (cơ bản) | Có (mở rộng) |
+| Vendor Bills trong profitability | Có (`project_account`) | Có |
+| Purchase Orders trong profitability | Có (`project_purchase`) | Có |
+
+#### Cộng Tác & Chia Sẻ
+
+| Chức Năng | CE | EE |
+|-----------|----|----|
+| Portal sharing (khách hàng xem task) | Có | Có |
+| Customer ratings | Có (bật tùy chọn) | Có |
+| Email alias tạo task | Có | Có |
+| Attachments trên task | Có | Có |
+| Document workspace per project | Không | Có (`documents_project`) |
+| E-sign tài liệu từ task | Không | Có (EE Sign) |
+
+---
+
+### Lưu Ý Quan Trọng
+
+> **Odoo CE không phải bản "thiếu" — mà là bản "đủ dùng"** cho phần lớn doanh nghiệp vừa và nhỏ.
+
+**Khi nào cần EE:**
+- Dự án lớn, cần lập kế hoạch nguồn lực trực quan (Gantt + Forecast)
+- Công ty dịch vụ tại địa điểm cần Map View
+- Quy trình timesheet cần phê duyệt chính thức
+- Tuyển dụng/phân công theo kỹ năng
+- Quản lý tài liệu tập trung theo dự án
+
+**Khi CE là đủ:**
+- Quản lý task nội bộ, sprint, kanban
+- Theo dõi giờ làm việc và billing cơ bản
+- Chia sẻ tiến độ với khách hàng qua portal
+- Dự án có quy mô vừa, team nhỏ
+
+---
+
+*Tài liệu được tổng hợp từ mã nguồn `addons/project/` và các module liên quan trong repository `odoo-core`.*
